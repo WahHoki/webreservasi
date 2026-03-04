@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Reservation;
+// Pastikan DoctorController di-import
+use App\Http\Controllers\DoctorController;
 
 class DashboardController extends Controller
 {
@@ -16,15 +18,16 @@ class DashboardController extends Controller
             return view('dashboard.admin');
             
         } elseif ($user->role === 'doctor') {
-            return view('dashboard.doctor');
+            // Memanggil fungsi dashboard() yang mengirim $todayReservations
+            // JANGAN panggil allReservations() di sini karena akan menyebabkan error di view dashboard utama
+            return app(DoctorController::class)->dashboard();
             
         } else {
-            // Logika khusus untuk Dashboard Pasien
-            // Ambil 1 jadwal reservasi terdekat yang statusnya masih 'pending'
+            // Logika untuk Dashboard Pasien
             $nextReservation = Reservation::with(['schedule.doctor.user', 'schedule.doctor.polyclinic'])
                 ->where('patient_id', $user->id)
-                ->where('status', 'pending')
-                ->whereDate('reservation_date', '>=', now()) // Hanya jadwal hari ini atau ke depan
+                ->whereIn('status', ['pending', 'in_progress']) // Tambahkan in_progress agar pasien tahu jika sedang diperiksa
+                ->whereDate('reservation_date', '>=', now()->toDateString())
                 ->orderBy('reservation_date', 'asc')
                 ->first();
 

@@ -271,14 +271,13 @@
             <div class="hero-greeting">Selamat Bertugas, {{ auth()->user()->name }}! 👨‍⚕️</div>
             <p class="hero-subtitle">Berikut ringkasan aktivitas praktik Anda hari ini. Semoga pelayanan berjalan lancar.</p>
 
-            <a href="#" class="hero-cta">
+            <a href="{{ route('doctor.all') }}" class="hero-cta">
                 <svg width="17" height="17" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
                 </svg>
                 Lihat Daftar Pasien
             </a>
         </div>
-
         {{-- ── STAT STRIP ── --}}
         <div class="stat-strip anim-2">
             <div class="stat-card">
@@ -333,50 +332,69 @@
         {{-- ── MAIN GRID ── --}}
         <div class="main-grid">
 
-            {{-- Antrean Pasien --}}
-            <div class="panel anim-3">
-                <div class="panel-header">
-                    <svg width="18" height="18" fill="none" stroke="#6366f1" viewBox="0 0 24 24" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
-                    </svg>
-                    Antrean Pasien Hari Ini
-                </div>
-                <div class="panel-body">
-                    @if(isset($todayReservations) && $todayReservations->count())
-                        @foreach($todayReservations as $res)
-                            <div class="patient-item">
-                                <div class="patient-num">{{ str_pad($res->queue_number, 2, '0', STR_PAD_LEFT) }}</div>
-                                <div style="flex:1; min-width:0;">
-                                    <div class="patient-name">{{ $res->patient->user->name }}</div>
-                                    <div class="patient-meta">
-                                        <svg style="display:inline;vertical-align:-1px;margin-right:2px" width="11" height="11" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" d="M12 6v6l4 2"/></svg>
-                                        {{ \Carbon\Carbon::parse($res->schedule->start_time)->format('H:i') }} – {{ \Carbon\Carbon::parse($res->schedule->end_time)->format('H:i') }} WIB
-                                    </div>
+        {{-- Antrean Pasien --}}
+        <div class="panel anim-3" id="daftar-pasien">
+            <div class="panel-header">
+                <svg width="18" height="18" fill="none" stroke="#6366f1" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+                Antrean Pasien Hari Ini
+            </div>
+            <div class="panel-body">
+                @if(isset($todayReservations) && $todayReservations->count() > 0)
+                    @foreach($todayReservations as $res)
+                        <div class="patient-item">
+                            <div class="patient-num">{{ str_pad($res->queue_number, 2, '0', STR_PAD_LEFT) }}</div>
+                            <div style="flex:1; min-width:0;">
+                                <div class="patient-name">{{ $res->patient->name }}</div>
+                                <div class="patient-meta">
+                                    <svg style="display:inline;vertical-align:-1px;margin-right:2px" width="11" height="11" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"/><path stroke-linecap="round" d="M12 6v6l4 2"/>
+                                    </svg>
+                                    {{ \Carbon\Carbon::parse($res->schedule->start_time)->format('H:i') }} WIB
                                 </div>
-                                <span class="patient-status
-                                    @if($res->status === 'completed') status-done
-                                    @elseif($res->status === 'in_progress') status-progress
+                            </div>
+                            
+                            {{-- Tombol Aksi Update Status --}}
+                            <div class="flex items-center gap-3">
+                                <span class="patient-status 
+                                    @if($res->status === 'completed') status-done 
+                                    @elseif($res->status === 'in_progress') status-progress 
                                     @else status-pending @endif">
                                     @if($res->status === 'completed') Selesai
-                                    @elseif($res->status === 'in_progress') Berlangsung
+                                    @elseif($res->status === 'in_progress') Diperiksa
                                     @else Menunggu @endif
                                 </span>
+
+                                @if($res->status !== 'completed')
+                                <form action="{{ route('doctor.update_status', $res->id) }}" method="POST" style="display:inline;">
+                                    @csrf
+                                    @method('PATCH')
+                                    <input type="hidden" name="status" value="{{ $res->status === 'pending' ? 'in_progress' : 'completed' }}">
+                                    <button type="submit" class="p-1.5 bg-gray-50 hover:bg-indigo-50 text-indigo-600 rounded-lg border border-gray-200 transition-colors">
+                                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                                        </svg>
+                                    </button>
+                                </form>
+                                @endif
                             </div>
-                        @endforeach
-                    @else
-                        <div class="patient-empty">
-                            <div class="patient-empty-icon">
-                                <svg width="28" height="28" fill="none" stroke="#c7d2fe" viewBox="0 0 24 24" stroke-width="1.5">
-                                    <path stroke-linecap="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                </svg>
-                            </div>
-                            <p style="font-size:.875rem; color:#9ca3af; text-align:center;">
-                                Belum ada pasien antrean untuk hari ini.
-                            </p>
                         </div>
-                    @endif
-                </div>
+                    @endforeach
+                @else
+                    <div class="patient-empty">
+                        <div class="patient-empty-icon">
+                            <svg width="28" height="28" fill="none" stroke="#c7d2fe" viewBox="0 0 24 24" stroke-width="1.5">
+                                <path stroke-linecap="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            </svg>
+                        </div>
+                        <p style="font-size:.875rem; color:#9ca3af; text-align:center;">
+                            Belum ada pasien antrean untuk hari ini.
+                        </p>
+                    </div>
+                @endif
             </div>
+        </div>
 
             {{-- Panduan --}}
             <div class="panel anim-4">

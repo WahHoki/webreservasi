@@ -12,21 +12,30 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-// Rute Dashboard Utama (Controller yang akan membagi tampilan)
+// Rute Dashboard Utama (Membagi tampilan berdasarkan Role)
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
 
-// BUNGKUS UTAMA: Semua rute di dalam ini wajib LOGIN ('auth')
+// Semua rute yang membutuhkan Login
 Route::middleware('auth')->group(function () {
     
-    // Rute Profil Bawaan Breeze
+    // Rute Profil (Bawaan Breeze)
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     // --------------------------------------------------------
-    // HANYA BISA DIAKSES OLEH PASIEN
+    // KHUSUS DOKTER (Dashboard, Update Status, & Riwayat)
+    // --------------------------------------------------------
+    Route::middleware(['role:doctor'])->group(function () {
+        Route::get('/doctor/dashboard', [DoctorController::class, 'dashboard'])->name('doctor.dashboard');
+        Route::get('/doctor/all-patients', [DoctorController::class, 'allReservations'])->name('doctor.all');
+        Route::patch('/doctor/reservation/{id}/status', [DoctorController::class, 'updateStatus'])->name('doctor.update_status');
+    });
+
+    // --------------------------------------------------------
+    // KHUSUS PASIEN
     // --------------------------------------------------------
     Route::middleware(['role:patient'])->group(function () {
         Route::get('/reservation', [ReservationController::class, 'index'])->name('reservation.index');
@@ -36,7 +45,7 @@ Route::middleware('auth')->group(function () {
     });
 
     // --------------------------------------------------------
-    // HANYA BISA DIAKSES OLEH ADMIN
+    // KHUSUS ADMIN
     // --------------------------------------------------------
     Route::middleware(['role:admin'])->group(function () {
         Route::resource('polyclinics', PolyclinicController::class);
