@@ -1,0 +1,37 @@
+name: Hospital-System-CI
+
+on:
+  push:
+    branches: [ "main" ] # Robot jalan kalau kamu push ke main
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest # Robot bekerja di server Linux virtual
+
+    steps:
+    - uses: actions/checkout@v4 # Robot mengambil kodemu dari GitHub
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.3' # Sesuaikan dengan versi PHP-mu
+
+    - name: Install Dependencies
+      run: composer install --prefer-dist --no-progress
+
+    - name: Prepare Environment
+      run: |
+        cp .env.example .env
+        php artisan key:generate
+
+    - name: Run Database Migrations
+      run: |
+        mkdir -p database
+        touch database/database.sqlite
+        php artisan migrate --force
+      env:
+        DB_CONNECTION: sqlite
+        DB_DATABASE: database/database.sqlite
+
+    - name: Execute Tests
+      run: php artisan test
