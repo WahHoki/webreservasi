@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>MediCare — Sistem Reservasi Klinik</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Clash+Display:wght@400;500;600;700&family=DM+Sans:wght@300;400;500&display=swap');
@@ -308,6 +309,47 @@
         }
         .btn-cta-ghost:hover { background: rgba(255,255,255,0.22); transform: translateY(-2px); }
 
+        /* ── CHATBOT STYLES ── */
+        #chatbot-container {
+            position: fixed; bottom: 30px; right: 30px; z-index: 1000;
+        }
+
+        #chat-window {
+            display: none; width: 360px; height: 500px; background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(15px); border-radius: 24px; overflow: hidden;
+            box-shadow: 0 20px 50px rgba(30, 27, 75, 0.2); border: 1px solid rgba(99, 102, 241, 0.15);
+            flex-direction: column; margin-bottom: 20px;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #4338ca, #6366f1); padding: 1.25rem;
+            color: #fff; display: flex; justify-content: space-between; align-items: center;
+        }
+
+        .chat-messages {
+            flex: 1; padding: 1.25rem; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;
+            background: rgba(240, 244, 255, 0.4);
+        }
+
+        .bubble {
+            padding: 0.75rem 1rem; border-radius: 18px; font-size: 0.875rem; line-height: 1.5; max-width: 85%;
+        }
+        .bubble-bot { background: #fff; color: var(--indigo-dark); border-radius: 18px 18px 18px 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); }
+        .bubble-user { background: var(--indigo-base); color: #fff; border-radius: 18px 18px 4px 18px; align-self: flex-end; box-shadow: 0 4px 12px rgba(99,102,241,0.2); }
+
+        .chat-input-area { padding: 1rem; background: #fff; border-top: 1px solid rgba(0,0,0,0.05); display: flex; gap: 8px; }
+        .chat-input { flex: 1; border: 1.5px solid #eef0f7; border-radius: 50px; padding: 0.6rem 1rem; outline: none; font-size: 0.875rem; transition: border-color 0.2s; }
+        .chat-input:focus { border-color: var(--indigo-base); }
+        .chat-send-btn { background: var(--indigo-base); color: #fff; border: none; width: 38px; height: 38px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.2s; }
+        .chat-send-btn:hover { transform: scale(1.05); }
+
+        .chatbot-fab {
+            width: 64px; height: 64px; border-radius: 22px; background: linear-gradient(135deg, #4338ca, #6366f1);
+            border: none; color: #fff; cursor: pointer; box-shadow: 0 10px 30px rgba(99,102,241,0.4);
+            display: flex; align-items: center; justify-content: center; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .chatbot-fab:hover { transform: translateY(-5px) scale(1.05); box-shadow: 0 15px 40px rgba(99,102,241,0.5); }
+
         /* ── FOOTER ── */
         .footer {
             text-align: center;
@@ -335,10 +377,7 @@
             .cta-banner { flex-direction: column; text-align: center; padding: 2rem 1.5rem; }
             .cta-actions { justify-content: center; }
             .hero { padding: 3rem 1.25rem 2rem; }
-        }
-        @media (max-width: 480px) {
-            .hero-actions { flex-direction: column; align-items: center; }
-            .navbar-actions .btn-ghost { display: none; }
+            #chat-window { width: calc(100vw - 40px); bottom: 100px; right: 20px; }
         }
     </style>
 </head>
@@ -443,9 +482,87 @@
         </div>
     </section>
 
+    {{-- ── CHATBOT UI ── --}}
+    <div id="chatbot-container">
+        <div id="chat-window">
+            <div class="chat-header">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="width: 8px; height: 8px; background: #34d399; border-radius: 50%; box-shadow: 0 0 8px #34d399;"></div>
+                    <span style="font-family: 'Clash Display', sans-serif; font-weight: 600; font-size: 0.95rem;">Asisten MediCare</span>
+                </div>
+                <button onclick="toggleChat()" style="background:none; border:none; color:#fff; cursor:pointer;">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="chat-messages" id="chat-messages">
+                <div class="bubble bubble-bot">
+                    Halo! 👋 Saya asisten virtual MediCare. Ada yang bisa saya bantu terkait jadwal dokter atau layanan kami?
+                </div>
+            </div>
+            <div class="chat-input-area">
+                <input type="text" id="chat-input" class="chat-input" placeholder="Tanyakan jadwal dokter...">
+                <button id="send-btn" class="chat-send-btn">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </button>
+            </div>
+        </div>
+        <button onclick="toggleChat()" class="chatbot-fab">
+            <svg width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+        </button>
+    </div>
+
     <footer class="footer">
         &copy; {{ date('Y') }} MediCare. Sistem Reservasi Klinik Online.
     </footer>
 
+    {{-- ── SCRIPTS ── --}}
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        function toggleChat() {
+            $('#chat-window').fadeToggle(300).css('display', function(_, display) {
+                return display === 'none' ? 'none' : 'flex';
+            });
+            $('#chat-input').focus();
+        }
+
+        $(document).ready(function() {
+            $.ajaxSetup({
+                headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') }
+            });
+
+            $('#send-btn').click(function() {
+                const message = $('#chat-input').val().trim();
+                if (!message) return;
+
+                // Append user message
+                $('#chat-messages').append(`<div class="bubble bubble-user">${message}</div>`);
+                $('#chat-input').val('');
+                $('#chat-messages').scrollTop($('#chat-messages')[0].scrollHeight);
+
+                // Show typing indicator
+                const loadingId = 'loading-' + Date.now();
+                $('#chat-messages').append(`<div id="${loadingId}" style="font-size: 0.75rem; color: #9ca3af; margin-left: 10px;"><i>Asisten sedang berpikir...</i></div>`);
+
+                $.ajax({
+                    url: "{{ route('chatbot.send') }}",
+                    method: "POST",
+                    data: { message: message },
+                    success: function(response) {
+                        $(`#${loadingId}`).remove();
+                        $('#chat-messages').append(`<div class="bubble bubble-bot">${response.reply}</div>`);
+                        $('#chat-messages').scrollTop($('#chat-messages')[0].scrollHeight);
+                    },
+                    error: function() {
+                        $(`#${loadingId}`).remove();
+                        $('#chat-messages').append(`<div class="bubble bubble-bot" style="color: #ef4444;">Maaf, terjadi kesalahan koneksi. Silakan coba lagi.</div>`);
+                    }
+                });
+            });
+
+            $('#chat-input').keypress(function(e) {
+                if(e.which == 13) $('#send-btn').click();
+            });
+        });
+    </script>
 </body>
 </html>

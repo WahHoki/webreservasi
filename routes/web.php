@@ -7,6 +7,7 @@ use App\Http\Controllers\PolyclinicController;
 use App\Http\Controllers\DoctorController;
 use App\Http\Controllers\ScheduleController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\ChatbotController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -17,6 +18,7 @@ Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
 
+Route::post('/chatbot/send', [ChatbotController::class, 'chat'])->name('chatbot.send');
 // Semua rute yang membutuhkan Login
 Route::middleware('auth')->group(function () {
     
@@ -24,6 +26,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
 
     // --------------------------------------------------------
     // KHUSUS DOKTER (Dashboard, Update Status, & Riwayat)
@@ -52,7 +55,6 @@ Route::middleware('auth')->group(function () {
         Route::resource('doctors', DoctorController::class);
         Route::resource('schedules', ScheduleController::class); 
     });
-
 });
 
 require __DIR__.'/auth.php';
